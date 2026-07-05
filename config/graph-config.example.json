@@ -1,0 +1,4 @@
+{
+  "ClientId": "YOUR_APP_REGISTRATION_CLIENT_ID",
+  "TenantId": "YOUR_ENTRA_TENANT_ID"
+}

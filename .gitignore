@@ -1,0 +1,12 @@
+# Real config never goes to git — copy the .example files and fill them in
+config/*.json
+!config/*.example.json
+
+# Generated state
+todo/*
+logs/*
+!todo/.gitkeep
+!logs/.gitkeep
+
+# Tokens live in %LOCALAPPDATA%\ClaudeGraph, but belt and braces
+*.bin
