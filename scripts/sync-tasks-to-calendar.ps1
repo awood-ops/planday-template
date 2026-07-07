@@ -104,13 +104,17 @@ $tasksToSync        = [System.Collections.Generic.List[object]]::new()
 $allIncompleteTasks = [System.Collections.Generic.List[object]]::new()
 
 foreach ($list in $lists) {
-    $tasks = (Invoke-RestMethod "https://graph.microsoft.com/v1.0/me/todo/lists/$($list.id)/tasks" -Headers $h).value
-    foreach ($t in ($tasks | Where-Object { $_.status -ne "completed" -and $_.dueDateTime })) {
-        $allIncompleteTasks.Add($t)
-        if ([datetime]$t.dueDateTime.dateTime -le $targetDate.Date.AddDays(1).AddSeconds(-1)) {
-            $tasksToSync.Add($t)
+    $tasksUrl = "https://graph.microsoft.com/v1.0/me/todo/lists/$($list.id)/tasks?`$filter=status ne 'completed'&`$top=200"
+    do {
+        $page = Invoke-RestMethod $tasksUrl -Headers $h
+        foreach ($t in ($page.value | Where-Object { $_.dueDateTime })) {
+            $allIncompleteTasks.Add($t)
+            if ([datetime]$t.dueDateTime.dateTime -le $targetDate.Date.AddDays(1).AddSeconds(-1)) {
+                $tasksToSync.Add($t)
+            }
         }
-    }
+        $tasksUrl = $page.'@odata.nextLink'
+    } while ($tasksUrl)
 }
 
 # --- Email/check tasks never get calendar slots — the To Do reminder is enough ---
