@@ -70,15 +70,54 @@ you write that part yourself.
 | `sync-tasks-to-calendar.ps1` | Slot tasks due today into the calendar as "PlanDay" events, around blocked time; rolls unfinished tasks forward; skips check-email-type tasks |
 | `clear-planday-events.ps1` | Remove all PlanDay events for a date |
 | `sync-birthdays.ps1` | Calendar birthdays (+ Father's/Mother's Day) → reminder tasks 1 week ahead |
-| `get-bin-schedule.ps1` / `sync-bins-to-calendar.ps1` | Bin collection dates → morning-reminder tasks (York Council API — swap the endpoint for your council) |
+| `get-bin-schedule.ps1` / `sync-bins-to-calendar.ps1` | Bin collection dates → morning-reminder tasks (York Council API — see [Adapting the bin scripts to your council](#adapting-the-bin-scripts-to-your-council)) |
 | `daily-sync.ps1` | End-to-end morning pipeline: birthdays → tasks → work-calendar blocked slots → calendar sync |
 | `send-work-brief.ps1` | Email a structured day plan to another address (e.g. your work account) |
 | `register-daily-sync.ps1` | Task Scheduler registration for `daily-sync.ps1` |
+
+## Adapting the bin scripts to your council
+
+`get-bin-schedule.ps1` is the only location-specific script in the repo — it
+calls York Council's waste API. Everything downstream (`sync-bins-to-calendar.ps1`,
+the daily pipeline) only cares about its output contract: a JSON array of
+upcoming collections, each shaped like this:
+
+```json
+[
+  {
+    "service": "RECYCLING",
+    "date": "2026-07-09",
+    "dayOfWeek": "Thursday",
+    "description": "55L BLACK RECYCLING BOX x3"
+  }
+]
+```
+
+To point it at your own council:
+
+1. **Find your data source.** Many UK councils expose a public waste API keyed
+   on UPRN — your property's Unique Property Reference Number, which you can
+   look up at [findmyaddress.co.uk](https://www.findmyaddress.co.uk/). Open your
+   council's "check your bin day" page with the browser dev tools Network tab
+   and you'll often find a JSON endpoint you can call directly. No API? Some
+   councils publish an iCal feed instead, which parses just as easily.
+2. **Rewrite the fetch** in `get-bin-schedule.ps1` to call your source, keeping
+   the output shape above: `service` is the machine key, `description` is the
+   human label, and `date` must be `yyyy-MM-dd`.
+3. **Update the label map** in `sync-bins-to-calendar.ps1` — the `switch` that
+   turns `REFUSE` / `RECYCLING` / `GARDEN` into "Grey bin" / "Recycling box" /
+   "Garden bin" should match whatever `service` values your source returns.
+   Unknown values fall through and are used as-is, so this step is cosmetic.
+4. **Drop the York quirk.** The block commented "If nextCollection is exactly 14
+   days out" works around York's API flipping past today's collection on the
+   morning it happens. Your council's API probably doesn't need it.
+
+The pattern isn't really about bins. Anything that emits
+`service`/`date`/`description` — an allotment watering rota, a school menu, a
+gym timetable — gets turned into a 07:00-reminder task by the same sync script.
 
 ## Notes
 
 - Windows-only: token encryption uses DPAPI and scheduling uses Task Scheduler.
 - Graph returns event times in UTC; scripts pass your local timezone via the
   `Prefer: outlook.timezone` header where it matters.
-- The bin scripts call York Council's public waste API. The pattern (external
-  API → To Do task with a morning reminder) transfers to any data source.

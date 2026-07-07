@@ -1,6 +1,16 @@
 # Fetches upcoming bin collections from York Council waste API.
 # Usage: pwsh -File get-bin-schedule.ps1 [-DaysAhead 7]
 # Returns JSON array of upcoming collections within the window.
+#
+# THIS IS THE ONLY LOCATION-SPECIFIC SCRIPT. To adapt it to your own council
+# (or any other data source), rewrite the fetch below but keep the output
+# contract — a JSON array of objects with these fields:
+#   service     machine key, e.g. "RECYCLING" (drives the label map in
+#               sync-bins-to-calendar.ps1)
+#   date        collection date as yyyy-MM-dd
+#   dayOfWeek   e.g. "Thursday"
+#   description human-readable label from the source
+# See "Adapting the bin scripts to your council" in the README for a walkthrough.
 
 param(
     [int]$DaysAhead = 7
