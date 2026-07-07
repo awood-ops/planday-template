@@ -33,6 +33,11 @@ if (-not $ForceRefresh -and (Test-Path $atPath)) {
     } catch { }  # unreadable cache — fall through and refresh
 }
 
+# Refresh with the scopes consented at auth time (written by authenticate-graph.ps1)
+$scopesPath = "$tokenDir\scopes.txt"
+$scopes = if (Test-Path $scopesPath) { (Get-Content $scopesPath -Raw).Trim() }
+          else { "Tasks.ReadWrite Calendars.ReadWrite offline_access" }
+
 $refreshToken = Unprotect-Bytes ([System.IO.File]::ReadAllBytes($rtPath))
 $resp = Invoke-RestMethod -Method POST `
     -Uri "https://login.microsoftonline.com/$($config.TenantId)/oauth2/v2.0/token" `
@@ -41,7 +46,7 @@ $resp = Invoke-RestMethod -Method POST `
         grant_type    = "refresh_token"
         client_id     = $config.ClientId
         refresh_token = $refreshToken
-        scope         = "Tasks.ReadWrite Calendars.ReadWrite Mail.ReadWrite Mail.Send MailboxSettings.ReadWrite offline_access"
+        scope         = $scopes
     }
 
 [System.IO.File]::WriteAllBytes($rtPath, (Protect-String $resp.refresh_token))

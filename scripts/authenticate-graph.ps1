@@ -1,5 +1,15 @@
 # One-time authentication using auth code + PKCE (opens browser, catches localhost callback).
 # Run in pwsh (PowerShell 7).
+#
+# Least privilege: the default scopes cover the core task/calendar scripts only.
+# Add scopes for the optional scripts you actually use, e.g.:
+#   send-work-brief.ps1 needs Mail.Send:
+#     pwsh -File authenticate-graph.ps1 -Scopes "Tasks.ReadWrite Calendars.ReadWrite Mail.Send offline_access"
+# Re-running this script replaces the stored token and its consented scopes.
+
+param(
+    [string]$Scopes = "Tasks.ReadWrite Calendars.ReadWrite offline_access"
+)
 
 $config = Get-Content -Path "$PSScriptRoot\..\config\graph-config.json" | ConvertFrom-Json
 $tokenDir = "$env:LOCALAPPDATA\ClaudeGraph"
@@ -17,7 +27,7 @@ $hashBytes = $sha256.ComputeHash([System.Text.Encoding]::ASCII.GetBytes($codeVer
 $codeChallenge = [Convert]::ToBase64String($hashBytes).TrimEnd('=').Replace('+', '-').Replace('/', '_')
 
 # Build auth URL
-$scope = [System.Uri]::EscapeDataString("Tasks.ReadWrite Calendars.ReadWrite Mail.ReadWrite Mail.Send MailboxSettings.ReadWrite offline_access")
+$scope = [System.Uri]::EscapeDataString($Scopes)
 $encodedRedirect = [System.Uri]::EscapeDataString($redirectUri)
 $authUrl = "https://login.microsoftonline.com/$($config.TenantId)/oauth2/v2.0/authorize" +
     "?client_id=$($config.ClientId)" +
@@ -78,4 +88,8 @@ $encrypted = [System.Security.Cryptography.ProtectedData]::Protect(
 )
 [System.IO.File]::WriteAllBytes($tokenPath, $encrypted)
 
+# Record the consented scopes (not secret) so get-graph-token.ps1 refreshes with the same set
+Set-Content -Path "$tokenDir\scopes.txt" -Value $Scopes -NoNewline
+
 Write-Host "Done! Token saved — scripts will now run silently." -ForegroundColor Green
+Write-Host "Consented scopes: $Scopes" -ForegroundColor DarkCyan

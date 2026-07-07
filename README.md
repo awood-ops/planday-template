@@ -19,6 +19,10 @@ you write that part yourself.
   never inside a cloud-synced or git-tracked folder.
 - **Access-token cache** — scripts share one cached access token instead of each
   rotating the refresh token, so parallel runs don't race.
+- **Least-privilege scopes** — the default consent is
+  `Tasks.ReadWrite Calendars.ReadWrite offline_access`, nothing more. Scopes for
+  optional scripts (e.g. `Mail.Send` for `send-work-brief.ps1`) are opt-in at
+  sign-in time, and the token refresh reuses exactly what was consented.
 - The Client ID and Tenant ID in `config/graph-config.json` are not secrets, but
   the config directory is gitignored anyway so you can't leak anything by
   accident.
@@ -41,9 +45,19 @@ you write that part yourself.
    pwsh -File scripts\authenticate-graph.ps1
    ```
 
-   Requests `Tasks.ReadWrite Calendars.ReadWrite Mail.ReadWrite Mail.Send
-   MailboxSettings.ReadWrite offline_access` and stores the DPAPI-encrypted
-   refresh token. Everything after this runs silently.
+   Requests `Tasks.ReadWrite Calendars.ReadWrite offline_access` by default —
+   the minimum the core task/calendar scripts need — and stores the
+   DPAPI-encrypted refresh token. Everything after this runs silently.
+
+   Optional scripts need extra scopes; pass them explicitly when you opt in.
+   `send-work-brief.ps1` is the only one: it needs `Mail.Send`.
+
+   ```powershell
+   pwsh -File scripts\authenticate-graph.ps1 -Scopes "Tasks.ReadWrite Calendars.ReadWrite Mail.Send offline_access"
+   ```
+
+   Re-running the script replaces the stored token and its consented scopes,
+   so you can widen (or narrow) at any time.
 
 3. **Configure** — copy each `config/*.example.json` to the same name without
    `.example` and fill it in. Only `graph-config.json` is required (step 1

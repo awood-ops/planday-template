@@ -1,6 +1,10 @@
 # send-work-brief.ps1 — Sends a structured work day plan to the work email address
 # Claude at work can parse this and add task slots to the work calendar.
 #
+# Requires the Mail.Send scope, which is NOT in the default set. To use this
+# script, re-authenticate with it included:
+#   pwsh -File authenticate-graph.ps1 -Scopes "Tasks.ReadWrite Calendars.ReadWrite Mail.Send offline_access"
+#
 # Usage:
 #   pwsh -File send-work-brief.ps1 -Subject "Work Plan — Fri 8 May" -Body "..."
 #   pwsh -File send-work-brief.ps1 -Subject "..." -BodyFile "path\to\body.txt"
